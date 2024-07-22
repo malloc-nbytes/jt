@@ -112,8 +112,9 @@ let rec entries_to_csv entries =
 
 (* Begin the repl for continuous user querying *)
 let rec repl ctx =
+
   (* Display an entry to stdout *)
-  let display_entry e =
+  let display_entry e : unit =
     Printf.printf "  Job Title: %s\n" e.job_title;
     Printf.printf "  Company: %s\n" e.company;
     Printf.printf "  Pay: %s\n" e.pay;
@@ -124,21 +125,17 @@ let rec repl ctx =
     Printf.printf "  Extra information: %s\n" e.extra_info in
 
   (* List all available entries *)
-  let ls entries =
+  let list_all_entries entries : unit =
     List.iteri (fun i e ->
         Printf.printf "Entry %d\n" i;
         display_entry e) entries in
 
-  (* View a specific entry based on user input *)
-  let view_specific_entry entries =
-    failwith "todo" in
-
   (* Write the entries to the jt info file *)
-  let write_entries entries =
+  let write_entries entries : unit =
     let content = entries_to_csv entries in
     write_to_file info_fp content in
 
-  (* Maybe quit the application *)
+  (* Quit the application *)
   let quit ctx =
     (if ctx.entries != ctx.last_saved_entries then
        let rec loop () =
@@ -150,31 +147,95 @@ let rec repl ctx =
        loop ());
     exit 0 in
 
+  (* Remove a specific entry *)
+  let remove_entry entries =
+    let rec remove entries i del =
+      match entries with
+      | [] -> Printf.printf "index `%d` is out of range" del; []
+      | hd :: tl when i = del -> tl
+      | hd :: tl -> [hd] @ remove tl (i+1) del in
+
+    let rec loop () =
+      list_all_entries entries;
+      Printf.printf "Select a number to remove: ";
+      let inp = read_line () in
+      try
+        let del_idx = int_of_string inp in
+        remove entries 0 del_idx
+      with
+      | Failure _ ->
+         Printf.printf "`%s` is not a valid option" inp;
+         loop ()
+    in
+
+    loop ()
+  in
+
+  (* Edit a specific entry *)
+  let edit_entry entries =
+    failwith "todo" in
+
+  (* Create a new entry *)
+  let create_new_entry entries =
+    let get_input msg =
+      Printf.printf "%s: " msg;
+      match read_line () with
+      | "" -> "none"
+      | k -> k in
+
+    let rec get_status () =
+      Printf.printf "Status: [0: Pending][1: Interview Request][2: Accepted][3: Declined :(] ";
+      match read_line () with
+      | "0"|"Pending" -> Pending
+      | "1"|"Interview Request" -> Interview_Request
+      | "2"|"Accepted" -> Accepted
+      | "3"|"Declined" -> Declined
+      | k ->
+        Printf.printf "Invalid Status type: `%s`" k;
+        get_status () in
+
+    let rec get_interest () =
+      Printf.printf "Interest: [0 : Not Interested][1 : Interested][2 : Very Interested] ";
+      match read_line () with
+      | "0"|"Not Interested" -> Not_Interested
+      | "1"|"Interested" -> Interested
+      | "2"|"Very Interested" -> Very_Interested
+      | k ->
+        Printf.printf "Invalid Interest type: `%s`" k;
+        get_interest () in
+
+    let job_title = get_input "Job Title" in
+    let company = get_input "Company Name" in
+    let pay = get_input "Pay" in
+    let desc = get_input "Description" in
+    let status = get_status () in
+    let interest = get_interest () in
+    let link = get_input "Link" in
+    let extra_info = get_input "Extra Information" in
+    entries @ [{job_title; company; pay; desc; status; interest; link; extra_info}]
+  in
+
   (* Begin repl main loop *)
-  Printf.printf "New Entry     (n) [0]\n";
-  Printf.printf "List Entries  (l) [1]\n";
-  Printf.printf "Remove Entry  (r) [2]\n";
-  Printf.printf "View Entry    (v) [3]\n";
-  Printf.printf "Write Entries (w) [4]\n";
-  Printf.printf "Quit          (q) [5]\n";
-  let inp = read_line () in
-  match inp with
-  | "n"|"0" -> failwith "todo"
-  | "l"|"1" ->
-     ls ctx.entries;
-     repl ctx;
-  | "r"|"2" -> failwith "todo"
-  | "v"|"3" ->
-     view_specific_entry ctx.entries;
+  Printf.printf "New Entry     (n)[0]\n";
+  Printf.printf "Remove Entry  (r)[1]\n";
+  Printf.printf "Edit Entry    (e)[2]\n";
+  Printf.printf "List Entries  (l)[3]\n";
+  Printf.printf "Write Entries (w)[4]\n";
+  Printf.printf "Quit          (q)[5]\n";
+
+  match read_line () with
+  | "n"|"0" -> repl {ctx with entries = create_new_entry ctx.entries}
+  | "r"|"1" -> repl {ctx with entries = remove_entry ctx.entries}
+  | "e"|"2" -> repl {ctx with entries = edit_entry ctx.entries}
+  | "l"|"3" ->
+     list_all_entries ctx.entries;
      repl ctx
   | "w"|"4" ->
      write_entries ctx.entries;
      repl {ctx with last_saved_entries = ctx.entries}
-  | "q"|"5" ->
-     quit ctx;
-     repl ctx
-  | _ ->
-     Printf.printf "invalid command %s\n" inp;
+  | "q"|"5" -> quit ctx
+  | invalid ->
+     Printf.printf "invalid command `%s`\n" invalid;
      repl ctx
 
 let () =
