@@ -133,12 +133,22 @@ let rec repl ctx =
   let view_specific_entry entries =
     failwith "todo" in
 
+  (* Write the entries to the jt info file *)
   let write_entries entries =
     let content = entries_to_csv entries in
     write_to_file info_fp content in
 
+  (* Maybe quit the application *)
   let quit ctx =
-    failwith "todo" in
+    (if ctx.entries != ctx.last_saved_entries then
+       let rec loop () =
+         Printf.printf "There are unsaved changes, would you like to save them? [y/n]";
+         match read_line () with
+         | "Y"|"y"|"Yes"|"yes" -> write_entries ctx.entries
+         | "N"|"n"|"No"|"no" -> ()
+         | invalid -> Printf.printf "invalid option `%s`" invalid; loop () in
+       loop ());
+    exit 0 in
 
   (* Begin repl main loop *)
   Printf.printf "New Entry     (n) [0]\n";
