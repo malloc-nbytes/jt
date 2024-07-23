@@ -139,7 +139,7 @@ let rec repl ctx =
   let quit ctx =
     (if ctx.entries != ctx.last_saved_entries then
        let rec loop () =
-         Printf.printf "There are unsaved changes, would you like to save them? [y/n]";
+         Printf.printf "There are unsaved changes, would you like to save them? [y/n] ";
          match read_line () with
          | "Y"|"y"|"Yes"|"yes" -> write_entries ctx.entries
          | "N"|"n"|"No"|"no" -> ()
@@ -173,7 +173,66 @@ let rec repl ctx =
 
   (* Edit a specific entry *)
   let edit_entry entries =
-    failwith "todo" in
+    let rec edit_entry_loop entry =
+      let get_input msg prev =
+        Printf.printf "%s (previous: %s): " msg prev;
+        match read_line () with
+        | "" -> "none"
+        | k -> k in
+
+      let rec get_status prev =
+        Printf.printf "Status: [0: Pending][1: Interview Request][2: Accepted][3: Declined] (previous: %s): " prev;
+        match read_line () with
+        | "0"|"Pending" -> Pending
+        | "1"|"Interview Request" -> Interview_Request
+        | "2"|"Accepted" -> Accepted
+        | "3"|"Declined" -> Declined
+        | k ->
+          Printf.printf "Invalid Status type: `%s`\n" k;
+          get_status prev in
+
+      let rec get_interest prev =
+        Printf.printf "Interest: [0 : Not Interested][1 : Interested][2 : Very Interested] (previous: %s): " prev;
+        match read_line () with
+        | "0"|"Not Interested" -> Not_Interested
+        | "1"|"Interested" -> Interested
+        | "2"|"Very Interested" -> Very_Interested
+        | k ->
+          Printf.printf "Invalid Interest type: `%s`\n" k;
+          get_interest prev in
+
+      Printf.printf "Enter the number to edit:\n";
+      Printf.printf "Select one of:\n  [0 : Job Title][1 : Company][2 : Pay][3 : Description][4 : Status][5 : Interest][6 : Link][7 : Extra Information] (or `q` to quit): ";
+      match read_line () with
+      | "0"|"Job Title" -> edit_entry_loop {entry with job_title = get_input "Job Title" entry.job_title}
+      | "1"|"Company" -> edit_entry_loop {entry with company = get_input "Company" entry.company}
+      | "2"|"Pay" -> edit_entry_loop {entry with pay = get_input "Pay" entry.pay}
+      | "3"|"Description" -> edit_entry_loop {entry with desc = get_input "Description" entry.desc}
+      | "4"|"Status" -> edit_entry_loop {entry with status = get_status @@ status_tostr entry.status}
+      | "5"|"Interest" -> edit_entry_loop {entry with interest = get_interest @@ interest_tostr entry.interest}
+      | "6"|"Link" -> edit_entry_loop {entry with link = get_input "Link" entry.link}
+      | "7"|"Extra Information" -> edit_entry_loop {entry with extra_info = get_input "Extra Information" entry.extra_info}
+      | "q"|"quit" -> entry
+      | invalid -> Printf.printf "invalid choice `%s`\n" invalid; edit_entry_loop entry in
+
+    let rec edit entries i idx =
+      match entries with
+      | [] -> []
+      | hd :: tl when i = idx -> [edit_entry_loop hd] @ tl
+      | hd :: tl -> [hd] @ edit tl (i+1) idx in
+
+    let rec loop () =
+      list_all_entries entries;
+      Printf.printf "Select a number to edit: ";
+      let inp = read_line () in
+      try
+        let edit_idx = int_of_string inp in
+        edit entries 0 edit_idx
+      with
+      | Failure _ ->
+         Printf.printf "`%s` is not a valid option" inp;
+         loop () in
+    loop () in
 
   (* Create a new entry *)
   let create_new_entry entries =
@@ -184,14 +243,14 @@ let rec repl ctx =
       | k -> k in
 
     let rec get_status () =
-      Printf.printf "Status: [0: Pending][1: Interview Request][2: Accepted][3: Declined :(] ";
+      Printf.printf "Status: [0: Pending][1: Interview Request][2: Accepted][3: Declined] ";
       match read_line () with
       | "0"|"Pending" -> Pending
       | "1"|"Interview Request" -> Interview_Request
       | "2"|"Accepted" -> Accepted
       | "3"|"Declined" -> Declined
       | k ->
-        Printf.printf "Invalid Status type: `%s`" k;
+        Printf.printf "Invalid Status type: `%s`\n" k;
         get_status () in
 
     let rec get_interest () =
@@ -201,7 +260,7 @@ let rec repl ctx =
       | "1"|"Interested" -> Interested
       | "2"|"Very Interested" -> Very_Interested
       | k ->
-        Printf.printf "Invalid Interest type: `%s`" k;
+        Printf.printf "Invalid Interest type: `%s`\n" k;
         get_interest () in
 
     let job_title = get_input "Job Title" in
@@ -224,16 +283,12 @@ let rec repl ctx =
   Printf.printf "Quit          (q)[5]\n";
 
   match read_line () with
-  | "n"|"0" -> repl {ctx with entries = create_new_entry ctx.entries}
-  | "r"|"1" -> repl {ctx with entries = remove_entry ctx.entries}
-  | "e"|"2" -> repl {ctx with entries = edit_entry ctx.entries}
-  | "l"|"3" ->
-     list_all_entries ctx.entries;
-     repl ctx
-  | "w"|"4" ->
-     write_entries ctx.entries;
-     repl {ctx with last_saved_entries = ctx.entries}
-  | "q"|"5" -> quit ctx
+  | "New Entry"     |"n"|"0" -> repl {ctx with entries = create_new_entry ctx.entries}
+  | "Remove Entry"  |"r"|"1" -> repl {ctx with entries = remove_entry ctx.entries}
+  | "Edit Entry"    |"e"|"2" -> repl {ctx with entries = edit_entry ctx.entries}
+  | "List Entries"  |"l"|"3" -> list_all_entries ctx.entries; repl ctx
+  | "Write Entries" |"w"|"4" -> write_entries ctx.entries; repl {ctx with last_saved_entries = ctx.entries}
+  | "Quit"          |"q"|"5" -> quit ctx
   | invalid ->
      Printf.printf "invalid command `%s`\n" invalid;
      repl ctx
