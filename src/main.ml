@@ -56,9 +56,9 @@ let str_tostatus = function
 
 (* Convert jt interest to a string *)
 let interest_tostr = function
-  | Not_Interested -> "Not Interested"
+  | Not_Interested -> "Not_Interested"
   | Interested -> "Interested"
-  | Very_Interested -> "Very Interested"
+  | Very_Interested -> "Very_Interested"
 
 (* Convert a string to jt interest *)
 let str_tointerest = function
@@ -90,7 +90,8 @@ let rec csv_to_jt_entries csv =
 
 (* Write `content` to the filepath `fp` *)
 let write_to_file fp content =
-  failwith "todo"
+  let oc = open_out fp in
+  Printf.fprintf oc "%s" content
 
 (* Get the stored info from the jt_info filepath *)
 let get_info_from_jt_fp file_path =
@@ -108,7 +109,17 @@ let get_info_from_jt_fp file_path =
 
 (* Convert jt entries to valid csv *)
 let rec entries_to_csv entries =
-  failwith "todo"
+  match entries with
+  | [] -> ""
+  | hd :: tl ->
+    hd.job_title ^ ","
+      ^ hd.company ^ ","
+      ^ hd.pay ^ ","
+      ^ hd.desc ^ ","
+      ^ (status_tostr hd.status) ^ ","
+      ^ (interest_tostr hd.interest) ^ ","
+      ^ hd.link ^ ","
+      ^ hd.extra_info ^ "\n" ^ entries_to_csv tl
 
 (* Begin the repl for continuous user querying *)
 let rec repl ctx =
@@ -143,7 +154,7 @@ let rec repl ctx =
          match read_line () with
          | "Y"|"y"|"Yes"|"yes" -> write_entries ctx.entries
          | "N"|"n"|"No"|"no" -> ()
-         | invalid -> Printf.printf "invalid option `%s`" invalid; loop () in
+         | invalid -> Printf.printf "invalid option `%s`\n" invalid; loop () in
        loop ());
     exit 0 in
 
@@ -151,7 +162,7 @@ let rec repl ctx =
   let remove_entry entries =
     let rec remove entries i del =
       match entries with
-      | [] -> Printf.printf "index `%d` is out of range" del; []
+      | [] -> Printf.printf "index `%d` is out of range\n" del; []
       | hd :: tl when i = del -> tl
       | hd :: tl -> [hd] @ remove tl (i+1) del in
 
@@ -164,10 +175,9 @@ let rec repl ctx =
         remove entries 0 del_idx
       with
       | Failure _ ->
-         Printf.printf "`%s` is not a valid option" inp;
+         Printf.printf "`%s` is not a valid option\n" inp;
          loop ()
     in
-
     loop ()
   in
 
@@ -175,13 +185,13 @@ let rec repl ctx =
   let edit_entry entries =
     let rec edit_entry_loop entry =
       let get_input msg prev =
-        Printf.printf "%s (previous: %s): " msg prev;
+        Printf.printf "%s (previous: %s) " msg prev;
         match read_line () with
         | "" -> "none"
         | k -> k in
 
       let rec get_status prev =
-        Printf.printf "Status: [0: Pending][1: Interview Request][2: Accepted][3: Declined] (previous: %s): " prev;
+        Printf.printf "Status: [0: Pending][1: Interview Request][2: Accepted][3: Declined] (previous: %s) " prev;
         match read_line () with
         | "0"|"Pending" -> Pending
         | "1"|"Interview Request" -> Interview_Request
@@ -192,7 +202,7 @@ let rec repl ctx =
           get_status prev in
 
       let rec get_interest prev =
-        Printf.printf "Interest: [0 : Not Interested][1 : Interested][2 : Very Interested] (previous: %s): " prev;
+        Printf.printf "Interest: [0 : Not Interested][1 : Interested][2 : Very Interested] (previous: %s) " prev;
         match read_line () with
         | "0"|"Not Interested" -> Not_Interested
         | "1"|"Interested" -> Interested
@@ -202,7 +212,7 @@ let rec repl ctx =
           get_interest prev in
 
       Printf.printf "Enter the number to edit:\n";
-      Printf.printf "Select one of:\n  [0 : Job Title][1 : Company][2 : Pay][3 : Description][4 : Status][5 : Interest][6 : Link][7 : Extra Information] (or `q` to quit): ";
+      Printf.printf "Select one of:\n  [0 : Job Title][1 : Company][2 : Pay][3 : Description][4 : Status][5 : Interest][6 : Link][7 : Extra Information] (or `q` to quit) ";
       match read_line () with
       | "0"|"Job Title" -> edit_entry_loop {entry with job_title = get_input "Job Title" entry.job_title}
       | "1"|"Company" -> edit_entry_loop {entry with company = get_input "Company" entry.company}
@@ -305,6 +315,11 @@ let () =
        let split = String.split_on_char ',' hd in
        [split] @ create_csv tl in
 
-  let entries = String.split_on_char '\n' info |> create_csv |> csv_to_jt_entries in
-  let ctx = {entries; last_saved_entries = entries } in
+  let info = match List.rev (String.to_seq info |> List.of_seq) with
+            | hd :: tl when hd = '\n' -> List.rev tl |> List.to_seq |> String.of_seq
+            | _ -> info in
+
+  let entries = if String.length info = 0 then []
+                else String.split_on_char '\n' info |> create_csv |> csv_to_jt_entries in
+  let ctx = {entries; last_saved_entries = entries} in
   repl ctx
