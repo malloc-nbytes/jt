@@ -1,3 +1,5 @@
+open Unix
+
 type status =
   | Pending
   | Interview_Request
@@ -18,6 +20,7 @@ type entry =
   ; interest : interest
   ; link : string
   ; extra_info : string
+  ; date : string
   }
 
 type ctx =
@@ -38,6 +41,17 @@ let info_fp = match Sys.getenv_opt jt_info_variable with
      let fp = Filename.concat (Sys.getenv "HOME") ".jt_info.csv" in
      Printf.printf "%s environment variable has not been set, using path: %s\n" jt_info_variable fp;
      fp
+
+let get_local_time () =
+  let now = Unix.time () in
+  let tm = Unix.localtime now in
+  let year = tm.tm_year + 1900 in
+  let month = tm.tm_mon + 1 in
+  let day = tm.tm_mday in
+  let hour = tm.tm_hour in
+  let min = tm.tm_min in
+  let sec = tm.tm_sec in
+  Printf.sprintf "%04d-%02d-%02d %02d:%02d:%02d" year month day hour min sec
 
 (* Convert jt status to a string *)
 let status_tostr = function
@@ -79,13 +93,13 @@ let rec csv_to_jt_entries csv =
   let rec aux = function
     | [] -> []
     | hd :: tl ->
-       let job_title, company, pay, desc, status, interest, link, extra_info =
+       let job_title, company, pay, desc, status, interest, link, extra_info, date =
          match hd with
-         | [jt; cm; py; de; st; intrst; lnk; ei] -> jt, cm, py, de, st, intrst, lnk, ei
+         | [jt; cm; py; de; st; intrst; lnk; ei; da] -> jt, cm, py, de, st, intrst, lnk, ei, da
          | _ -> failwith "invalid csv line to convert to entry" in
        [{job_title; company; pay; desc;
          status = str_tostatus status; interest = str_tointerest interest;
-         link; extra_info}] @ aux tl in
+         link; extra_info; date}] @ aux tl in
   aux csv
 
 (* Write `content` to the filepath `fp` *)
@@ -112,14 +126,16 @@ let rec entries_to_csv entries =
   match entries with
   | [] -> ""
   | hd :: tl ->
-    hd.job_title ^ ","
-      ^ hd.company ^ ","
-      ^ hd.pay ^ ","
-      ^ hd.desc ^ ","
-      ^ (status_tostr hd.status) ^ ","
-      ^ (interest_tostr hd.interest) ^ ","
-      ^ hd.link ^ ","
-      ^ hd.extra_info ^ "\n" ^ entries_to_csv tl
+     hd.job_title ^ ","
+     ^ hd.company ^ ","
+     ^ hd.pay ^ ","
+     ^ hd.desc ^ ","
+     ^ (status_tostr hd.status) ^ ","
+     ^ (interest_tostr hd.interest) ^ ","
+     ^ hd.link ^ ","
+     ^ hd.extra_info ^ ","
+     ^ hd.date ^ "\n"
+     ^ entries_to_csv tl
 
 (* Begin the repl for continuous user querying *)
 let rec repl ctx =
@@ -133,7 +149,8 @@ let rec repl ctx =
     Printf.printf "  Status: %s\n" @@ status_tostr e.status;
     Printf.printf "  Interest: %s\n" @@ interest_tostr e.interest;
     Printf.printf "  Link: %s\n" e.link;
-    Printf.printf "  Extra information: %s\n" e.extra_info in
+    Printf.printf "  Extra information: %s\n" e.extra_info;
+    Printf.printf "  Date: %s <immutable>\n" e.date in
 
   (* List all available entries *)
   let list_all_entries entries : unit =
@@ -198,8 +215,8 @@ let rec repl ctx =
         | "2"|"Accepted" -> Accepted
         | "3"|"Declined" -> Declined
         | k ->
-          Printf.printf "Invalid Status type: `%s`\n" k;
-          get_status prev in
+           Printf.printf "Invalid Status type: `%s`\n" k;
+           get_status prev in
 
       let rec get_interest prev =
         Printf.printf "Interest: [0 : Not Interested][1 : Interested][2 : Very Interested] (previous: %s) " prev;
@@ -208,8 +225,8 @@ let rec repl ctx =
         | "1"|"Interested" -> Interested
         | "2"|"Very Interested" -> Very_Interested
         | k ->
-          Printf.printf "Invalid Interest type: `%s`\n" k;
-          get_interest prev in
+           Printf.printf "Invalid Interest type: `%s`\n" k;
+           get_interest prev in
 
       Printf.printf "Enter the number to edit:\n";
       Printf.printf "Select one of:\n  [0 : Job Title][1 : Company][2 : Pay][3 : Description][4 : Status][5 : Interest][6 : Link][7 : Extra Information] (or `q` to quit) ";
@@ -260,8 +277,8 @@ let rec repl ctx =
       | "2"|"Accepted" -> Accepted
       | "3"|"Declined" -> Declined
       | k ->
-        Printf.printf "Invalid Status type: `%s`\n" k;
-        get_status () in
+         Printf.printf "Invalid Status type: `%s`\n" k;
+         get_status () in
 
     let rec get_interest () =
       Printf.printf "Interest: [0 : Not Interested][1 : Interested][2 : Very Interested] ";
@@ -270,8 +287,8 @@ let rec repl ctx =
       | "1"|"Interested" -> Interested
       | "2"|"Very Interested" -> Very_Interested
       | k ->
-        Printf.printf "Invalid Interest type: `%s`\n" k;
-        get_interest () in
+         Printf.printf "Invalid Interest type: `%s`\n" k;
+         get_interest () in
 
     let job_title = get_input "Job Title" in
     let company = get_input "Company Name" in
@@ -281,7 +298,7 @@ let rec repl ctx =
     let interest = get_interest () in
     let link = get_input "Link" in
     let extra_info = get_input "Extra Information" in
-    entries @ [{job_title; company; pay; desc; status; interest; link; extra_info}]
+    entries @ [{job_title; company; pay; desc; status; interest; link; extra_info; date = get_local_time ()}]
   in
 
   (* Begin repl main loop *)
@@ -316,8 +333,8 @@ let () =
        [split] @ create_csv tl in
 
   let info = match List.rev (String.to_seq info |> List.of_seq) with
-            | hd :: tl when hd = '\n' -> List.rev tl |> List.to_seq |> String.of_seq
-            | _ -> info in
+    | hd :: tl when hd = '\n' -> List.rev tl |> List.to_seq |> String.of_seq
+    | _ -> info in
 
   let entries = if String.length info = 0 then []
                 else String.split_on_char '\n' info |> create_csv |> csv_to_jt_entries in
