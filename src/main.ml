@@ -155,7 +155,7 @@ let rec repl ctx =
   (* List all available entries *)
   let list_all_entries entries : unit =
     List.iteri (fun i e ->
-        Printf.printf "Entry %d\n" i;
+        Printf.printf "================ Entry %d ================\n" i;
         display_entry e) entries in
 
   (* Write the entries to the jt info file *)
@@ -338,5 +338,6 @@ let () =
 
   let entries = if String.length info = 0 then []
                 else String.split_on_char '\n' info |> create_csv |> csv_to_jt_entries in
+
   let ctx = {entries; last_saved_entries = entries} in
   repl ctx
