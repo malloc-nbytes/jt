@@ -1,3 +1,5 @@
+src/jt
+
 *.so
 
 # Autotools generated files
