@@ -51,13 +51,15 @@ get_jt_file(void)
 }
 
 static entry *
-entry_create(const char *title,
+entry_create(const char *company,
+             const char *title,
              const char *pay,
              const char *desc,
              status      status,
              str_array   info)
 {
         entry *e = (entry *)malloc(sizeof(entry));
+        e->company = strdup(company);
         e->title = strdup(title);
         e->pay = strdup(pay);
         e->desc = strdup(desc);
@@ -89,7 +91,7 @@ read_jt_file(void)
 
         char **lns = forge_io_read_file_to_lines(fp);
 
-        const char *title = NULL, *pay = NULL, *desc = NULL, *status = NULL;
+        const char *company = NULL, *title = NULL, *pay = NULL, *desc = NULL, *status = NULL;
         str_array info = dyn_array_empty(str_array);
 
         for (size_t i = 0; lns && lns[i]; ++i) {
@@ -99,7 +101,7 @@ read_jt_file(void)
                                 dyn_array_append(info, lns[i]);
                                 ++i;
                         }
-                        dyn_array_append(ar, entry_create(title, pay, desc,
+                        dyn_array_append(ar, entry_create(company, title, pay, desc,
                                                           get_status_from_cstr(status), info));
                         dyn_array_clear(info);
                         title = pay = desc = status = NULL;
@@ -110,7 +112,9 @@ read_jt_file(void)
 
                         const char *val = colon+2;
                         size_t span_n = colon-lns[i];
-                        if (!strncmp(lns[i], "TITLE", span_n)) {
+                        if (!strncmp(lns[i], "COMPANY", span_n)) {
+                                company = val;
+                        } else if (!strncmp(lns[i], "TITLE", span_n)) {
                                 title = val;
                         } else if (!strncmp(lns[i], "PAY", span_n)) {
                                 pay = val;
@@ -130,6 +134,7 @@ read_jt_file(void)
 void
 add_entry(jt_context *ctx)
 {
+        char *company = forge_rdln("Company: ");
         char *title = forge_rdln("Title: ");
         char *pay = forge_rdln("Pay: ");
         char *desc = forge_rdln("Description: ");
@@ -147,7 +152,7 @@ add_entry(jt_context *ctx)
         }
 
         dyn_array_append(ctx->entries,
-                         entry_create(title, pay, desc,
+                         entry_create(company, title, pay, desc,
                                       STATUS_PENDING, info));
 
         ctx->saved = 0;
@@ -170,6 +175,7 @@ get_entry_information(const entry *entry)
 {
         str_array content = dyn_array_empty(str_array);
 
+        dyn_array_append(content, forge_cstr_builder("Company: ",     entry->company,                NULL));
         dyn_array_append(content, forge_cstr_builder("Title: ",       entry->title,                  NULL));
         dyn_array_append(content, forge_cstr_builder("Pay: ",         entry->pay,                    NULL));
         dyn_array_append(content, forge_cstr_builder("Description: ", entry->desc,                   NULL));
@@ -188,17 +194,17 @@ get_entry_information(const entry *entry)
 void
 list_entries(jt_context *ctx)
 {
-        str_array titles = dyn_array_empty(str_array);
+        str_array companies = dyn_array_empty(str_array);
 
         for (size_t i = 0; i < ctx->entries.len; ++i) {
-                dyn_array_append(titles, ctx->entries.data[i]->title);
+                dyn_array_append(companies, ctx->entries.data[i]->company);
         }
 
         size_t last_row = 0;
         while (1) {
                 int choice = forge_chooser("Choose an entry",
-                                           (const char **)titles.data,
-                                           titles.len, last_row);
+                                           (const char **)companies.data,
+                                           companies.len, last_row);
 
                 if (choice == -1) break;
 
@@ -212,7 +218,7 @@ list_entries(jt_context *ctx)
                 dyn_array_free(content);
                 last_row = choice;
         }
-        dyn_array_free(titles);
+        dyn_array_free(companies);
 }
 
 void
@@ -227,6 +233,7 @@ save(jt_context *ctx)
         str_array lns = dyn_array_empty(str_array);
         for (size_t i = 0; i < ctx->entries.len; ++i) {
                 const entry *e = ctx->entries.data[i];
+                dyn_array_append(lns, forge_cstr_builder("COMPANY: ",     e->company,                NULL));
                 dyn_array_append(lns, forge_cstr_builder("TITLE: ",       e->title,                  NULL));
                 dyn_array_append(lns, forge_cstr_builder("PAY: ",         e->pay,                    NULL));
                 dyn_array_append(lns, forge_cstr_builder("DESCRIPTION: ", e->desc,                   NULL));

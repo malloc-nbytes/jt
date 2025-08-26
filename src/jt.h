@@ -12,6 +12,7 @@ typedef enum {
 } status;
 
 typedef struct {
+        char *company;
         char *title;
         char *pay;
         char *desc;
