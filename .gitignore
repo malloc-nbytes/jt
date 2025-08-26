@@ -1,31 +1,70 @@
-*.annot
-*.cmo
-*.cma
-*.cmi
-*.a
+*.so
+
+# Autotools generated files
+conf*
+Makefile
+Makefile.in
+/aclocal.m4
+/autom4te.cache/
+/compile
+/config.guess
+/config.h
+/config.h.in
+/config.log
+/config.status
+/config.sub
+/depcomp
+/install-sh
+/missing
+/stamp-h1
+/libtool
+/ltmain.sh
+*.la
+*.lo
 *.o
-*.cmx
-*.cmxs
-*.cmxa
+*.Plo
 
-main
+*.dirstamp
+ar-lib
+src/include/config.h
+src/include/stamp-h1
+src/stamp-h1
 
-# ocamlbuild working directory
-_build/
+# Object and dependency files
+*.o
+*.lo
+*.Plo
+*.Po
+.deps/
 
-# ocamlbuild targets
-*.byte
-*.native
+# Temporary and backup files
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
 
-# oasis generated files
-setup.data
-setup.log
+# Test and coverage files
+*.gcda
+*.gcno
+*.gcov
+/test-suite.log
 
-# Merlin configuring file for Vim and Emacs
-.merlin
+# Installed files (if accidentally created in repo)
+/usr/
+/usr/bin/forge
+/usr/lib64/libforge.*
+/usr/include/forge/
+/usr/src/forge/
+/usr/lib/forge/
+/var/lib/forge/
+/var/cache/forge/
 
-# Dune generated files
-*.install
+# Build directories
+/build/
+/dist/
 
-# Local OPAM switch
-_opam/
+# Editor and IDE files
+.vscode/
+.idea/
+*.code-workspace
