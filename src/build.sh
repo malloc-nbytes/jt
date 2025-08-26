@@ -2,4 +2,4 @@
 
 set -xe
 
-ocamlfind opt -linkpkg -package unix -o main main.ml
+cc -ggdb -O0 -std=c23 -o jt $(find . -type f -name '*.c') $(forge lib)
