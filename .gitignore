@@ -4,6 +4,7 @@ src/jt
 
 # Autotools generated files
 conf*
+!/configure.ac
 Makefile
 Makefile.in
 /aclocal.m4
